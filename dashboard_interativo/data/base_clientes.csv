@@ -1,0 +1,5 @@
+id,nome,cpf,cnpj,email,data_nascimento,setor,salario,data_registro,status
+1,Ana Souza,12345678909,,ana@example.com,1992-03-05,Financeiro,5200.0,2024-03-01,Ativo
+2,João Lima,98765432100,,joao@example.com,1985-11-22,Tecnologia,7800.5,2024-03-15,Inativo
+3,Carlos Oliveira,,12345678000199,carlos@empresa.com,1979-07-19,Vendas,4300.0,2024-04-02,Ativo
+4,Marina Castro,11122233344,,marina@castro.com,1995-09-30,Recursos Humanos,6200.3,2024-04-10,Ativo
