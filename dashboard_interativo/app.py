@@ -5,8 +5,16 @@ from io import BytesIO
 import plotly.express as px
 import re
 from validate_docbr import CPF
+from pathlib import Path # Adicionada a importação de Path
 
+# --- CONFIGURAÇÃO DA PÁGINA ---
 DB_PATH = "data/banco.csv"
+
+# --- VERIFICAR E CRIAR O DIRETÓRIO DE DADOS ---
+# Cria um objeto Path para a pasta 'data'
+data_dir = Path("data")
+# Cria a pasta 'data' se ela não existir
+data_dir.mkdir(exist_ok=True)
 
 st.set_page_config(page_title="Dashboard Interativo ", layout="wide")
 st.title("Dashboard Interativo (pessoas)")
