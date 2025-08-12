@@ -1,19 +1,31 @@
+# app.py
 import streamlit as st
 import pandas as pd
-from utils import validar_cpf, validar_email
 from io import BytesIO
 import plotly.express as px
+from pathlib import Path
 import re
 from validate_docbr import CPF
-from pathlib import Path # Adicionada a importação de Path
+
+# --- FUNÇÕES DE VALIDAÇÃO (para demonstração, normalmente estariam em utils.py) ---
+def validar_cpf(cpf_str):
+    """Valida um CPF usando a biblioteca validate_docbr."""
+    if not isinstance(cpf_str, str) or not cpf_str.strip():
+        return False
+    cpf_validator = CPF()
+    return cpf_validator.validate(cpf_str)
+
+def validar_email(email_str):
+    """Valida um email usando uma expressão regular."""
+    if not isinstance(email_str, str) or not email_str.strip():
+        return False
+    return re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email_str) is not None
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 DB_PATH = "data/banco.csv"
 
 # --- VERIFICAR E CRIAR O DIRETÓRIO DE DADOS ---
-# Cria um objeto Path para a pasta 'data'
 data_dir = Path("data")
-# Cria a pasta 'data' se ela não existir
 data_dir.mkdir(exist_ok=True)
 
 st.set_page_config(page_title="Dashboard Interativo ", layout="wide")
@@ -30,7 +42,7 @@ except FileNotFoundError:
 st.sidebar.header("Adicionar Novo Registro")
 with st.sidebar.form("formulario"):
     nome = st.text_input("Nome")
-    cpf = st.text_input("CPF")
+    cpf_input = st.text_input("CPF")
     email = st.text_input("Email")
     cargo = st.text_input("Cargo")
     setor = st.selectbox("Setor", ["Financeiro", "Tecnologia", "Vendas", "RH", "Outro"])
@@ -40,7 +52,8 @@ with st.sidebar.form("formulario"):
 
     if enviar:
         erros = []
-        if not validar_cpf(cpf):
+        # Garante que o input do CPF é uma string antes de validar
+        if not validar_cpf(str(cpf_input)):
             erros.append("CPF inválido")
         if not validar_email(email):
             erros.append("Email inválido")
@@ -49,7 +62,7 @@ with st.sidebar.form("formulario"):
         if erros:
             st.error(" | ".join(erros))
         else:
-            novo = pd.DataFrame([[nome, cpf, email, cargo, setor, salario, data_admissao]], columns=df.columns)
+            novo = pd.DataFrame([[nome, cpf_input, email, cargo, setor, salario, data_admissao]], columns=df.columns)
             df = pd.concat([df, novo], ignore_index=True)
             df.to_csv(DB_PATH, index=False)
             st.success("Registro adicionado com sucesso!")
@@ -70,7 +83,7 @@ col_salvar, col_deletar = st.columns(2)
 
 with col_salvar:
     if st.button("Salvar alterações"):
-        df_editado = edit_result["edited_df"] if "edited_df" in edit_result else editavel
+        df_editado = edit_result
         df_editado.to_csv(DB_PATH, index=False)
         st.success("Alterações salvas com sucesso!")
         st.rerun()
@@ -93,9 +106,10 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.metric("Total de Registros", len(df))
 with col2:
-    st.metric("Média Salarial", f'R$ {df["Salário"].mean():,.2f}' if not df.empty else "R$ 0,00")
+    st.metric("Média Salarial", f'R$ {df["Salário"].mean():,.2f}' if not df.empty and "Salário" in df.columns else "R$ 0,00")
 with col3:
-    invalidos = df["CPF"].apply(lambda x: not validar_cpf(x))
+    # A correção está nesta linha: verifica se o valor não é nulo antes de validar
+    invalidos = df["CPF"].apply(lambda x: not validar_cpf(str(x)) if pd.notna(x) else False)
     st.metric("CPFs Inválidos", invalidos.sum())
 
 # Gráficos Interativos
@@ -105,7 +119,7 @@ col_graf1, col_graf2 = st.columns(2)
 
 with col_graf1:
     st.markdown("Quantidade por Setor")
-    if not df.empty:
+    if not df.empty and "Setor" in df.columns:
         setor_counts = df["Setor"].value_counts().reset_index()
         setor_counts.columns = ["Setor", "Quantidade"]
         fig1 = px.bar(
@@ -123,7 +137,7 @@ with col_graf1:
 
 with col_graf2:
     st.markdown("Distribuição Salarial por Setor")
-    if not df.empty:
+    if not df.empty and "Setor" in df.columns and "Salário" in df.columns:
         media_por_setor = df.groupby("Setor")["Salário"].mean().reset_index()
         fig2 = px.pie(
             media_por_setor,
@@ -144,6 +158,9 @@ def gerar_excel(df):
     output.seek(0)
     return output
 
-st.download_button("Baixar CSV", data=df.to_csv(index=False), file_name="dados.csv", mime="text/csv")
-st.download_button("Baixar Excel", data=gerar_excel(df), file_name="dados.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-st.download_button("Baixar JSON", data=df.to_json(orient="records"), file_name="dados.json", mime="application/json")
+if not df.empty:
+    st.download_button("Baixar CSV", data=df.to_csv(index=False), file_name="dados.csv", mime="text/csv")
+    st.download_button("Baixar Excel", data=gerar_excel(df), file_name="dados.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    st.download_button("Baixar JSON", data=df.to_json(orient="records"), file_name="dados.json", mime="application/json")
+else:
+    st.info("Nenhum dado para exportar.")
