@@ -158,9 +158,61 @@ def gerar_excel(df):
     output.seek(0)
     return output
 
+st.subheader("Exportação de Dados")
 if not df.empty:
     st.download_button("Baixar CSV", data=df.to_csv(index=False), file_name="dados.csv", mime="text/csv")
     st.download_button("Baixar Excel", data=gerar_excel(df), file_name="dados.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     st.download_button("Baixar JSON", data=df.to_json(orient="records"), file_name="dados.json", mime="application/json")
 else:
     st.info("Nenhum dado para exportar.")
+
+# --- NOVA SEÇÃO: Envio Agendado por Email ---
+st.markdown("---")
+st.header("📧 Envio Agendado por Email")
+
+# Usa o session_state para persistir os valores do formulário
+if 'email_prefs' not in st.session_state:
+    st.session_state.email_prefs = {
+        "email": "",
+        "frequencia": "Diário",
+        "formatos": []
+    }
+
+with st.expander("Configurar Agendamento de Email"):
+    with st.form("form_email_agendado"):
+        email_destino = st.text_input("Seu Email", value=st.session_state.email_prefs["email"])
+        frequencia = st.selectbox("Frequência de Envio", ["Diário", "Semanal", "Mensal"], index=["Diário", "Semanal", "Mensal"].index(st.session_state.email_prefs["frequencia"]))
+        formatos = st.multiselect("Formatos dos Arquivos", ["CSV", "XLSX", "JSON"], default=st.session_state.email_prefs["formatos"])
+
+        enviar_agendamento = st.form_submit_button("Salvar Preferências")
+
+        if enviar_agendamento:
+            erros_email = []
+            if not validar_email(email_destino):
+                erros_email.append("Email inválido")
+            if not formatos:
+                erros_email.append("Selecione pelo menos um formato de arquivo")
+
+            if erros_email:
+                st.error(" | ".join(erros_email))
+            else:
+                # Armazena as preferências na session_state
+                st.session_state.email_prefs["email"] = email_destino
+                st.session_state.email_prefs["frequencia"] = frequencia
+                st.session_state.email_prefs["formatos"] = formatos
+                st.success(f"Preferências de envio salvas! Você receberá os dados em '{email_destino}' com frequência '{frequencia}' nos formatos: {', '.join(formatos)}.")
+
+                # --- LÓGICA DE ENVIO DE EMAIL (PLACEHOLDER) ---
+                # A implementação do envio de email real precisaria de um serviço externo.
+                # O código abaixo é apenas um exemplo de como a lógica de envio seria chamada.
+                #
+                # Exemplo de como gerar o arquivo para envio:
+                # if "CSV" in formatos:
+                #     csv_bytes = df.to_csv(index=False)
+                # if "XLSX" in formatos:
+                #     excel_bytes = gerar_excel(df)
+                #
+                # A partir daqui, um script externo agendado leria as preferências salvas
+                # e faria o envio usando uma biblioteca de email (ex: smtplib).
+                #
+                # st.warning("Atenção: A lógica para enviar emails de forma agendada precisa ser configurada em um serviço externo.")
