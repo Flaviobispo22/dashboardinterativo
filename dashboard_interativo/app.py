@@ -7,16 +7,26 @@ from pathlib import Path
 import re
 from validate_docbr import CPF
 
-# --- FUNÇÕES DE VALIDAÇÃO (para demonstração, normalmente estariam em utils.py) ---
+# --- FUNÇÕES DE VALIDAÇÃO ---
 def validar_cpf(cpf_str):
-    """Valida um CPF usando a biblioteca validate_docbr."""
+    """
+    Valida um CPF removendo caracteres não numéricos.
+    Recebe: string com o CPF.
+    Retorna: True se o CPF for válido, False caso contrário.
+    """
     if not isinstance(cpf_str, str) or not cpf_str.strip():
         return False
+    # Remove todos os caracteres que não são dígitos
+    cpf_limpo = re.sub(r'\D', '', cpf_str)
     cpf_validator = CPF()
-    return cpf_validator.validate(cpf_str)
+    return cpf_validator.validate(cpf_limpo)
 
 def validar_email(email_str):
-    """Valida um email usando uma expressão regular."""
+    """
+    Valida um email usando uma expressão regular.
+    Recebe: string com o email.
+    Retorna: True se o email for válido, False caso contrário.
+    """
     if not isinstance(email_str, str) or not email_str.strip():
         return False
     return re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email_str) is not None
@@ -52,7 +62,6 @@ with st.sidebar.form("formulario"):
 
     if enviar:
         erros = []
-        # Garante que o input do CPF é uma string antes de validar
         if not validar_cpf(str(cpf_input)):
             erros.append("CPF inválido")
         if not validar_email(email):
@@ -108,7 +117,6 @@ with col1:
 with col2:
     st.metric("Média Salarial", f'R$ {df["Salário"].mean():,.2f}' if not df.empty and "Salário" in df.columns else "R$ 0,00")
 with col3:
-    # A correção está nesta linha: verifica se o valor não é nulo antes de validar
     invalidos = df["CPF"].apply(lambda x: not validar_cpf(str(x)) if pd.notna(x) else False)
     st.metric("CPFs Inválidos", invalidos.sum())
 
@@ -151,10 +159,10 @@ with col_graf2:
         st.info("Nenhum dado disponível para gerar o gráfico.")
 
 # Exportações
-def gerar_excel(df):
+def gerar_excel(df_to_export):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='Dados')
+        df_to_export.to_excel(writer, index=False, sheet_name='Dados')
     output.seek(0)
     return output
 
@@ -170,7 +178,6 @@ else:
 st.markdown("---")
 st.header("📧 Envio Agendado por Email")
 
-# Usa o session_state para persistir os valores do formulário
 if 'email_prefs' not in st.session_state:
     st.session_state.email_prefs = {
         "email": "",
@@ -183,7 +190,6 @@ with st.expander("Configurar Agendamento de Email"):
         email_destino = st.text_input("Seu Email", value=st.session_state.email_prefs["email"])
         frequencia = st.selectbox("Frequência de Envio", ["Diário", "Semanal", "Mensal"], index=["Diário", "Semanal", "Mensal"].index(st.session_state.email_prefs["frequencia"]))
         formatos = st.multiselect("Formatos dos Arquivos", ["CSV", "XLSX", "JSON"], default=st.session_state.email_prefs["formatos"])
-
         enviar_agendamento = st.form_submit_button("Salvar Preferências")
 
         if enviar_agendamento:
@@ -196,23 +202,8 @@ with st.expander("Configurar Agendamento de Email"):
             if erros_email:
                 st.error(" | ".join(erros_email))
             else:
-                # Armazena as preferências na session_state
                 st.session_state.email_prefs["email"] = email_destino
                 st.session_state.email_prefs["frequencia"] = frequencia
                 st.session_state.email_prefs["formatos"] = formatos
                 st.success(f"Preferências de envio salvas! Você receberá os dados em '{email_destino}' com frequência '{frequencia}' nos formatos: {', '.join(formatos)}.")
 
-                # --- LÓGICA DE ENVIO DE EMAIL (PLACEHOLDER) ---
-                # A implementação do envio de email real precisaria de um serviço externo.
-                # O código abaixo é apenas um exemplo de como a lógica de envio seria chamada.
-                #
-                # Exemplo de como gerar o arquivo para envio:
-                # if "CSV" in formatos:
-                #     csv_bytes = df.to_csv(index=False)
-                # if "XLSX" in formatos:
-                #     excel_bytes = gerar_excel(df)
-                #
-                # A partir daqui, um script externo agendado leria as preferências salvas
-                # e faria o envio usando uma biblioteca de email (ex: smtplib).
-                #
-                # st.warning("Atenção: A lógica para enviar emails de forma agendada precisa ser configurada em um serviço externo.")
